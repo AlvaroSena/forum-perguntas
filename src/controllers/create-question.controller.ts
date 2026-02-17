@@ -3,6 +3,8 @@ import { Controller, Post, Body, UsePipes, UseGuards } from "@nestjs/common";
 import { ZodValidationPipe } from "src/pipes/zod-validation-pipe";
 import { z } from "zod";
 import { JwtAuthGuard } from "src/auth/jwt-auth.guard";
+import { CurrentUser } from "src/auth/current-user-decorator";
+import type { UserPayload } from "src/auth/jwt.strategy";
 
 const createQuestionBodySchema = z.object({
   title: z.string(),
@@ -18,5 +20,10 @@ export class CreateQuestionController {
 
   @Post()
   @UsePipes(new ZodValidationPipe(createQuestionBodySchema))
-  async handle(@Body() body: CreateQuestionBodySchema) {}
+  async handle(@CurrentUser() user: UserPayload, @Body() body: CreateQuestionBodySchema) {
+    console.log({
+      user,
+      body,
+    });
+  }
 }
