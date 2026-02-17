@@ -1,28 +1,49 @@
-// import { PrismaService } from "src/prisma/prisma.service";
-// import { ConflictException, UsePipes } from "@nestjs/common";
-import { Controller, Post } from "@nestjs/common";
+import { PrismaService } from "src/prisma/prisma.service";
+import { Controller, Post, Body, UsePipes, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-// import { hash } from "bcryptjs";
-// import { ZodValidationPipe } from "src/pipes/zod-validation-pipe";
-// import { z } from "zod";
+import { compare } from "bcryptjs";
+import { ZodValidationPipe } from "src/pipes/zod-validation-pipe";
+import { z } from "zod";
 
-// const createAccountSchema = z.object({
-//   name: z.string(),
-//   email: z.email(),
-//   password: z.string(),
-// });
+const authenticateBodySchema = z.object({
+  email: z.email(),
+  password: z.string(),
+});
 
-// type CreateAccountSchema = z.infer<typeof createAccountSchema>;
+type AuthenticateBodySchema = z.infer<typeof authenticateBodySchema>;
 
 @Controller("/sessions")
 export class AuthenticateController {
-  constructor(private jwt: JwtService) {}
+  constructor(
+    private jwt: JwtService,
+    private prisma: PrismaService,
+  ) {}
 
   @Post()
-  // @UsePipes(new ZodValidationPipe(createAccountSchema))
-  async handle() {
-    const token = this.jwt.sign({ sub: "user-id" });
+  @UsePipes(new ZodValidationPipe(authenticateBodySchema))
+  async handle(@Body() body: AuthenticateBodySchema) {
+    const { email, password } = body;
 
-    return token;
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("E-mail or password is incorrect.");
+    }
+
+    const isPasswordValid = await compare(password, user.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException("E-mail or password is incorrect.");
+    }
+
+    const accessToken = this.jwt.sign({ sub: user.id });
+
+    return {
+      access_token: accessToken,
+    };
   }
 }
