@@ -1,5 +1,5 @@
 import { PrismaService } from "src/prisma/prisma.service";
-import { Controller, Post, Body, UsePipes, UseGuards } from "@nestjs/common";
+import { Controller, Post, Body, UseGuards } from "@nestjs/common";
 import { ZodValidationPipe } from "src/pipes/zod-validation-pipe";
 import { z } from "zod";
 import { JwtAuthGuard } from "src/auth/jwt-auth.guard";
@@ -19,11 +19,39 @@ export class CreateQuestionController {
   constructor(private prisma: PrismaService) {}
 
   @Post()
-  @UsePipes(new ZodValidationPipe(createQuestionBodySchema))
-  async handle(@CurrentUser() user: UserPayload, @Body() body: CreateQuestionBodySchema) {
-    console.log({
-      user,
-      body,
+  async handle(
+    @CurrentUser() user: UserPayload,
+    @Body(new ZodValidationPipe(createQuestionBodySchema)) body: CreateQuestionBodySchema,
+  ) {
+    const { title, content } = body;
+    const { sub: authorId } = user;
+
+    const slug = this.slugify(title);
+
+    await this.prisma.question.create({
+      data: {
+        title,
+        content,
+        authorId,
+        slug,
+      },
     });
+  }
+
+  private slugify(title: string): string {
+    return (
+      title
+        .toLowerCase()
+        .trim()
+        // Remove accents/diacritics
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        // Remove invalid chars
+        .replace(/[^a-z0-9\s-]/g, "")
+        // Replace whitespace with hyphen
+        .replace(/\s+/g, "-")
+        // Remove multiple hyphens
+        .replace(/-+/g, "-")
+    );
   }
 }
