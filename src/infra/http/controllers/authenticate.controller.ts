@@ -1,4 +1,4 @@
-import { PrismaService } from "@/infra/prisma/prisma.service";
+import { PrismaService } from "@/infra/database/prisma/prisma.service";
 import { Controller, Post, Body, UsePipes, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { compare } from "bcryptjs";
